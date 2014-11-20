@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys, io, urllib, re, time
+import os, sys, io, urllib, re
 from PIL import Image
 from http.server import SimpleHTTPRequestHandler
 import socketserver
@@ -134,7 +134,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
         scale_ratio = THUMBNAIL_WIDTH / float(img_width)
         target_height = int(scale_ratio * img_height)
         try:
-            img.thumbnail((THUMBNAIL_WIDTH, target_height), resample=Image.NEAREST)
+            img.thumbnail((THUMBNAIL_WIDTH, target_height), resample=Image.ANTIALIAS)
         except IOError as exptn:
             self.send_error(404, "Error generating thumbnail from %s because %s" % (path, exptn))
             return None
@@ -150,7 +150,6 @@ class RequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", self.guess_type(path))
         self.send_header("Content-Length", str(thumb_length))
-        self.send_header("Last-Modified", self.date_time_string(time.time()))
         self.end_headers()
         return f
 
