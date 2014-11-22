@@ -29,7 +29,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
             page = 1
             try:
                 page = int(query['page'][0])
-                page = min(page, 1 + (len(IMAGE_FILES) / IMAGES_PER_PAGE))
+                page = min(page, 1 + int(len(IMAGE_FILES) / IMAGES_PER_PAGE))
                 page = max(page, 1)
             except:
                 pass
