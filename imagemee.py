@@ -127,7 +127,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
         except IOError:
             self.send_error(404, "Error loading image file %s" % path)
             return None
-        if img is None or img.format.lower() == 'gif':
+        if img is None:
             self.send_error(404, "Error generating thumbnail from %s" % path)
             return None
         img_width, img_height = img.size
@@ -160,9 +160,18 @@ class RequestHandler(SimpleHTTPRequestHandler):
         return urllib.parse.parse_qs(parts[1])
 
 if __name__ == '__main__':
-    print('Searching all image files in and below current directory...')
+    print('Searching all image files in and below the current directory...')
+    img_files_mtimes = []
     for root, dirs, files in os.walk('.'):
-        IMAGE_FILES.extend(os.path.join(root, f) for f in files if re.match(IMAGE_FILE_REGEX, f))
-    print('Server up!')
+        for f in files:
+            if not re.match(IMAGE_FILE_REGEX, f, re.IGNORECASE):
+                continue
+            filename = os.path.join(root, f)
+            mtime = os.path.getmtime(filename)
+            img_files_mtimes.append((mtime, filename))
+    # Sort by file modification time, newest (largest mtime) files first.
+    img_files_mtimes.sort(reverse=True)
+    IMAGE_FILES = [filename for mtime, filename in img_files_mtimes]
+    print('Server up at http://127.0.0.1:' + str(PORT))
     httpd = socketserver.TCPServer(("", PORT), RequestHandler)
     httpd.serve_forever()
