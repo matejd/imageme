@@ -21,7 +21,7 @@ Requires PIL.
 Chrome, xdg-open, custom MIME type
 ----------------------------------
 
-This section setups a custom URI scheme that starts imagemee
+This section setups a custom URI scheme that starts imageMee
 when e.g. `imagemee:/home/user/photos` link is clicked.
 This was tested under Debian with XFCE, but should work
 under other standard desktop environments as well (GNOME, KDE, LXDE).
@@ -30,7 +30,7 @@ under other standard desktop environments as well (GNOME, KDE, LXDE).
    ```
    [Desktop Entry]
    Version=1.0
-   Name=Imagemee
+   Name=imageMee
    GenericName=Image Gallery Server
    TryExec=python3
    Exec=python3 /path/to/imagemee/imagemee.py %U
