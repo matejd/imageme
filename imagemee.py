@@ -5,6 +5,8 @@ import os, sys, io, urllib, re
 from PIL import Image
 from http.server import SimpleHTTPRequestHandler
 import socketserver
+from webbrowser import open_new_tab
+import threading
 
 PORT = 8000
 IMAGE_FILE_REGEX = '^.+\.(png|jpg|jpeg|tif|tiff|gif|bmp)$'
@@ -25,6 +27,10 @@ class RequestHandler(SimpleHTTPRequestHandler):
         # If thumbnail=1 is in the query string, we generate a thumbnail
         # of the requested image file.
         query = self.parse_query(self.path)
+        if 'quit' in query:
+            # User clicked 'quit' link => shutdown server.
+            # server.shutdown must be called from another thread or it will deadlock!
+            threading.Thread(target=self.server.shutdown).start()
         if 'page' in query:
             page = 1
             try:
@@ -79,12 +85,22 @@ class RequestHandler(SimpleHTTPRequestHandler):
             '            .image {max-width: 100%; border-radius: 0.5em;}',
             '            td {width: ' + str(100.0 / IMAGES_PER_ROW) + '%;}',
             '        </style>',
+            '        <script>',
+            '            function notifyQuit() {',
+            '                // Send a synchronous quit notification.',
+            '                var req = new XMLHttpRequest();',
+            '                req.open("GET", "/?quit=yes", false);',
+            '                req.send();',
+            '                window.location.reload(true);',
+            '            }',
+            '        </script>',
             '    </head>',
             '    <body>',
             '    <div class="content">',
             '        <h2 class="header">Num images: ' + str(len(IMAGE_FILES)),
             '            <a href="/?page=' + str(page-1) + '">prev</a>',
             '            <a href="/?page=' + str(page+1) + '">next</a>',
+            '            <a href="#" onclick="notifyQuit();">quit</a>',
             '        </h2>'
         ]
         table_row_count = 1
@@ -160,7 +176,16 @@ class RequestHandler(SimpleHTTPRequestHandler):
         return urllib.parse.parse_qs(parts[1])
 
 if __name__ == '__main__':
-    print('Searching all image files in and below the current directory...')
+    if len(sys.argv) == 2:
+        path = sys.argv[1]
+        if path.startswith('imagemee:'):
+            # Custom scheme: x-scheme-handler/imagemee
+            path = path[len('imagemee:'):]
+        try:
+            os.chdir(path)
+        except FileNotFoundError:
+            print('Couldn\'t find the specified path to serve from!')
+    print('Searching all image files in and below ' + os.getcwd())
     img_files_mtimes = []
     for root, dirs, files in os.walk('.'):
         for f in files:
@@ -172,6 +197,12 @@ if __name__ == '__main__':
     # Sort by file modification time, newest (largest mtime) files first.
     img_files_mtimes.sort(reverse=True)
     IMAGE_FILES = [filename for mtime, filename in img_files_mtimes]
-    print('Server up at http://127.0.0.1:' + str(PORT))
-    httpd = socketserver.TCPServer(("", PORT), RequestHandler)
+    # Configure allow_reuse_address to make re-runs of the script less painful -
+    # if this is not True then waiting for the address to be freed after the
+    # last run can block a subsequent run.
+    socketserver.TCPServer.allow_reuse_address = True
+    httpd = socketserver.TCPServer(('', PORT), RequestHandler)
+    url = 'http://127.0.0.1:' + str(PORT)
+    print('Server up at ' + url)
+    open_new_tab(url)
     httpd.serve_forever()
